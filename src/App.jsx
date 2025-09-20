@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import Home from "./Pages/Home";
-import SearchResults from "./Pages/Search Results";
+import SearchResults from "./Pages/SearchResults";
 import CompanyDashboard from "./Pages/CompanyDashboard";
 import AdminPanel from "./Pages/AdminPanel";
 import BookingPage from "./Pages/Booking";
