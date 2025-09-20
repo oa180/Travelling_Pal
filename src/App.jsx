@@ -3,10 +3,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import Home from "./Pages/Home";
 import SearchResults from "./Pages/Search Results";
-import CompanyDashboard from "./Pages/Company Dashboard";
-import AdminPanel from "./Pages/Admin panel";
+import CompanyDashboard from "./Pages/CompanyDashboard";
+import AdminPanel from "./Pages/AdminPanel";
 import BookingPage from "./Pages/Booking";
-import BookingConfirmation from "./Pages/Booking Confirmation";
+import BookingConfirmation from "./Pages/BookingConfirmation";
 
 function App() {
   return (
