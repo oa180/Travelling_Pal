@@ -29,7 +29,7 @@ export default function AdminPanel() {
     totalPackages: 0,
     totalBookings: 0,
     totalRevenue: 0,
-    activePackages: 0,``
+    activePackages: 0,
     verifiedCompanies: 0,
     monthlyGrowth: 0
   });
