@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { 
-  Send, 
-  Mic, 
-  MapPin, 
-  DollarSign, 
+import {
+  Send,
+  Mic,
+  MapPin,
+  DollarSign,
   Sparkles,
   Plane,
   MessageSquare,
   Search,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChatMessage } from "@/entities/ChatMessage";
 import { InvokeLLM } from "@/integrations/Core";
 
-import ChatInterface from "../components/chat/ChatInterface";
+import ChatInterface from "../components/Chat/ChatInterface";
 import QuickActions from "../components/home/QuickActions";
 import DestinationSuggestions from "../components/home/DestinationSuggestions";
 
@@ -31,10 +31,11 @@ export default function Home() {
   // Initial welcome message
   useEffect(() => {
     const welcomeMessage = {
-      id: 'welcome',
-      type: 'assistant',
-      content: "Hi there! 👋 I'm your personal travel assistant. Tell me about your dream trip - your budget, destination preferences, or travel dates - and I'll help you find the perfect package!",
-      timestamp: new Date()
+      id: "welcome",
+      type: "assistant",
+      content:
+        "Hi there! 👋 I'm your personal travel assistant. Tell me about your dream trip - your budget, destination preferences, or travel dates - and I'll help you find the perfect package!",
+      timestamp: new Date(),
     };
     setMessages([welcomeMessage]);
   }, []);
@@ -44,12 +45,12 @@ export default function Home() {
 
     const userMessage = {
       id: Date.now(),
-      type: 'user',
+      type: "user",
       content: message,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setCurrentMessage("");
     setIsLoading(true);
 
@@ -70,9 +71,15 @@ export default function Home() {
           type: "object",
           properties: {
             response: { type: "string" },
-            intent: { 
-              type: "string", 
-              enum: ["search", "budget_inquiry", "destination_request", "booking_help", "general"]
+            intent: {
+              type: "string",
+              enum: [
+                "search",
+                "budget_inquiry",
+                "destination_request",
+                "booking_help",
+                "general",
+              ],
             },
             extracted_data: {
               type: "object",
@@ -80,23 +87,23 @@ export default function Home() {
                 budget: { type: "number" },
                 destination: { type: "string" },
                 travel_date: { type: "string" },
-                travelers: { type: "number" }
-              }
-            }
-          }
-        }
+                travelers: { type: "number" },
+              },
+            },
+          },
+        },
       });
 
       const assistantMessage = {
         id: Date.now() + 1,
-        type: 'assistant',
+        type: "assistant",
         content: aiResponse.response,
         timestamp: new Date(),
         intent: aiResponse.intent,
-        extractedData: aiResponse.extracted_data
+        extractedData: aiResponse.extracted_data,
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
 
       // Save to database
       await ChatMessage.create({
@@ -104,18 +111,18 @@ export default function Home() {
         response: aiResponse.response,
         intent: aiResponse.intent,
         extracted_data: aiResponse.extracted_data,
-        session_id: sessionId
+        session_id: sessionId,
       });
-
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage = {
         id: Date.now() + 1,
-        type: 'assistant',
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment!",
-        timestamp: new Date()
+        type: "assistant",
+        content:
+          "I'm sorry, I'm having trouble connecting right now. Please try again in a moment!",
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     }
 
     setIsLoading(false);
@@ -123,11 +130,13 @@ export default function Home() {
 
   const handleQuickAction = (action) => {
     const quickMessages = {
-      destinations: "Can you suggest some popular destinations for my next trip?",
-      budget: "I'd like to plan a trip with a budget of around $1000-2000. What options do you have?",
-      deals: "What are the best travel deals available right now?"
+      destinations:
+        "Can you suggest some popular destinations for my next trip?",
+      budget:
+        "I'd like to plan a trip with a budget of around $1000-2000. What options do you have?",
+      deals: "What are the best travel deals available right now?",
     };
-    
+
     if (quickMessages[action]) {
       handleSendMessage(quickMessages[action]);
     }
@@ -146,13 +155,15 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Skip the endless browsing. Just tell us what you want, and our AI will find the perfect travel packages tailored to your budget and preferences.
+              Skip the endless browsing. Just tell us what you want, and our AI
+              will find the perfect travel packages tailored to your budget and
+              preferences.
             </p>
           </div>
 
           {/* Main Chat Interface */}
           <div className="max-w-4xl mx-auto">
-            <ChatInterface 
+            <ChatInterface
               messages={messages}
               onSendMessage={handleSendMessage}
               currentMessage={currentMessage}
@@ -177,7 +188,8 @@ export default function Home() {
               Why Choose TravelChat?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              We're revolutionizing travel planning with AI-powered conversations
+              We're revolutionizing travel planning with AI-powered
+              conversations
             </p>
           </div>
 
@@ -186,9 +198,12 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 transform group-hover:scale-110 transition-transform duration-200">
                 <MessageSquare className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Chat-Based Planning</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Chat-Based Planning
+              </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Simply chat about your travel dreams. Our AI understands natural language and finds exactly what you're looking for.
+                Simply chat about your travel dreams. Our AI understands natural
+                language and finds exactly what you're looking for.
               </p>
             </div>
 
@@ -196,9 +211,12 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 transform group-hover:scale-110 transition-transform duration-200">
                 <Search className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Smart Matching</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Smart Matching
+              </h3>
               <p className="text-muted-foreground leading-relaxed">
-                We analyze thousands of packages from verified providers to match your budget, dates, and preferences perfectly.
+                We analyze thousands of packages from verified providers to
+                match your budget, dates, and preferences perfectly.
               </p>
             </div>
 
@@ -206,9 +224,12 @@ export default function Home() {
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 transform group-hover:scale-110 transition-transform duration-200">
                 <Sparkles className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-4">Instant Booking</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Instant Booking
+              </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Found the perfect trip? Book instantly with secure payment options and get confirmation in seconds.
+                Found the perfect trip? Book instantly with secure payment
+                options and get confirmation in seconds.
               </p>
             </div>
           </div>
