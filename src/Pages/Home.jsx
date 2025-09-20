@@ -20,7 +20,7 @@ import { InvokeLLM } from "@/integrations/Core";
 
 import ChatInterface from "../components/Chat/ChatInterface";
 import QuickActions from "../components/Home/QuickActions";
-import DestinationSuggestions from "../components/home/DestinationSuggestions";
+import DestinationSuggestions from "../components/Home/DestinationSuggestions";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
