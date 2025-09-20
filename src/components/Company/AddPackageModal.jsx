@@ -130,13 +130,13 @@ export default function AddPackageModal({ open, onClose, onSubmit }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-3xl md:max-w-4xl max-h-[85vh] overflow-y-auto bg-white/95 backdrop-blur border border-gray-200 sm:rounded-2xl p-6 sm:p-8">
         <DialogHeader>
-          <DialogTitle>Add New Travel Package</DialogTitle>
+          <DialogTitle className="text-xl sm:text-2xl font-bold">Add New Travel Package</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div className="col-span-2">
               <Label htmlFor="title">Package Title *</Label>
               <Input
@@ -172,7 +172,7 @@ export default function AddPackageModal({ open, onClose, onSubmit }) {
             <div>
               <Label htmlFor="continent">Continent</Label>
               <Select value={formData.continent} onValueChange={(value) => handleInputChange('continent', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,7 +232,7 @@ export default function AddPackageModal({ open, onClose, onSubmit }) {
             <div>
               <Label htmlFor="star_rating">Rating</Label>
               <Select value={formData.star_rating} onValueChange={(value) => handleInputChange('star_rating', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -248,7 +248,7 @@ export default function AddPackageModal({ open, onClose, onSubmit }) {
             <div>
               <Label htmlFor="transport_type">Transport</Label>
               <Select value={formData.transport_type} onValueChange={(value) => handleInputChange('transport_type', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -264,7 +264,7 @@ export default function AddPackageModal({ open, onClose, onSubmit }) {
             <div>
               <Label htmlFor="accommodation_level">Accommodation</Label>
               <Select value={formData.accommodation_level} onValueChange={(value) => handleInputChange('accommodation_level', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
