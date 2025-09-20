@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 
-import SearchFilters from "../components/search/SearchFilters";
-import PackageCard from "../components/search/PackageCard";
+import SearchFilters from "../components/Search/SearchFilters";
+import PackageCard from "../components/Search/PackageCard";
 
 export default function SearchResults() {
   const [packages, setPackages] = useState([]);
