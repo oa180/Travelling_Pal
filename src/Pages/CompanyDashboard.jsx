@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import DashboardStats from "../components/company/DashboardStats";
-import PackageManagement from "../components/company/PackageManagement";
-import BookingsOverview from "../components/company/BookingsOverview";
-import AddPackageModal from "../components/company/AddPackageModal";
-import CompanyProfile from "../components/company/CompanyProfile";
+import DashboardStats from "../components/Company/DashboardStats";
+import PackageManagement from "../components/Company/PackageManagement";
+import BookingsOverview from "../components/Company/BookingsOverview";
+import AddPackageModal from "../components/Company/AddPackageModal";
+import CompanyProfile from "../components/Company/CompanyProfile";
 
 export default function CompanyDashboard() {
   const [user, setUser] = useState(null);
@@ -23,7 +23,7 @@ export default function CompanyDashboard() {
     totalBookings: 0,
     totalRevenue: 0,
     averageRating: 0,
-    searchAppearances: 0
+    searchAppearances: 0,
   });
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function CompanyDashboard() {
           company_type: "travel_agency",
           contact_email: currentUser.email,
           description: "Add your company description here",
-          is_active: true
+          is_active: true,
         });
         setCompany(userCompany);
       } else {
@@ -53,17 +53,20 @@ export default function CompanyDashboard() {
       }
 
       // Load packages for this company
-      const companyPackages = await TravelPackage.filter({ 
-        created_by: currentUser.email 
-      }, '-created_date');
+      const companyPackages = await TravelPackage.filter(
+        {
+          created_by: currentUser.email,
+        },
+        "-created_date"
+      );
       setPackages(companyPackages);
 
       // Load bookings for this company's packages
-      const packageIds = companyPackages.map(pkg => pkg.id);
+      const packageIds = companyPackages.map((pkg) => pkg.id);
       let companyBookings = [];
       if (packageIds.length > 0) {
-        companyBookings = await Booking.list('-created_date');
-        companyBookings = companyBookings.filter(booking => 
+        companyBookings = await Booking.list("-created_date");
+        companyBookings = companyBookings.filter((booking) =>
           packageIds.includes(booking.package_id)
         );
       }
@@ -71,21 +74,24 @@ export default function CompanyDashboard() {
 
       // Calculate stats
       const totalRevenue = companyBookings
-        .filter(b => b.status === 'confirmed')
+        .filter((b) => b.status === "confirmed")
         .reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
-      
-      const averageRating = companyPackages.length > 0 
-        ? companyPackages.reduce((sum, pkg) => sum + (pkg.star_rating || 0), 0) / companyPackages.length
-        : 0;
+
+      const averageRating =
+        companyPackages.length > 0
+          ? companyPackages.reduce(
+              (sum, pkg) => sum + (pkg.star_rating || 0),
+              0
+            ) / companyPackages.length
+          : 0;
 
       setStats({
         totalPackages: companyPackages.length,
         totalBookings: companyBookings.length,
         totalRevenue,
         averageRating: Math.round(averageRating * 10) / 10,
-        searchAppearances: companyPackages.length * 15 // Simulated metric
+        searchAppearances: companyPackages.length * 15, // Simulated metric
       });
-
     } catch (error) {
       console.error("Error loading dashboard data:", error);
     }
@@ -96,9 +102,9 @@ export default function CompanyDashboard() {
     try {
       const newPackage = await TravelPackage.create({
         ...packageData,
-        provider_name: company?.company_name || "My Travel Company"
+        provider_name: company?.company_name || "My Travel Company",
       });
-      setPackages(prev => [newPackage, ...prev]);
+      setPackages((prev) => [newPackage, ...prev]);
       setShowAddPackage(false);
       loadDashboardData(); // Refresh stats
     } catch (error) {
@@ -113,9 +119,11 @@ export default function CompanyDashboard() {
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-64"></div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {Array(4).fill(0).map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-              ))}
+              {Array(4)
+                .fill(0)
+                .map((_, i) => (
+                  <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+                ))}
             </div>
             <div className="h-96 bg-gray-200 rounded-lg"></div>
           </div>
@@ -130,7 +138,9 @@ export default function CompanyDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Company Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Company Dashboard
+            </h1>
             <p className="text-gray-600 mt-1">
               Welcome back, {company?.company_name || "Travel Partner"}
             </p>
@@ -159,7 +169,10 @@ export default function CompanyDashboard() {
                 <Users className="w-4 h-4" />
                 <span className="hidden sm:inline">Bookings</span>
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TabsTrigger
+                value="analytics"
+                className="flex items-center gap-2"
+              >
                 <TrendingUp className="w-4 h-4" />
                 <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
@@ -170,17 +183,14 @@ export default function CompanyDashboard() {
             </TabsList>
 
             <TabsContent value="packages">
-              <PackageManagement 
+              <PackageManagement
                 packages={packages}
                 onRefresh={loadDashboardData}
               />
             </TabsContent>
 
             <TabsContent value="bookings">
-              <BookingsOverview 
-                bookings={bookings}
-                packages={packages}
-              />
+              <BookingsOverview bookings={bookings} packages={packages} />
             </TabsContent>
 
             <TabsContent value="analytics">
@@ -195,7 +205,7 @@ export default function CompanyDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Popular Destinations</CardTitle>
@@ -203,7 +213,10 @@ export default function CompanyDashboard() {
                   <CardContent>
                     <div className="space-y-4">
                       {packages.slice(0, 5).map((pkg) => (
-                        <div key={pkg.id} className="flex items-center justify-between">
+                        <div
+                          key={pkg.id}
+                          className="flex items-center justify-between"
+                        >
                           <div>
                             <p className="font-medium">{pkg.destination}</p>
                             <p className="text-sm text-gray-500">{pkg.title}</p>
@@ -224,10 +237,7 @@ export default function CompanyDashboard() {
             </TabsContent>
 
             <TabsContent value="profile">
-              <CompanyProfile 
-                company={company}
-                onUpdate={loadDashboardData}
-              />
+              <CompanyProfile company={company} onUpdate={loadDashboardData} />
             </TabsContent>
           </Tabs>
         </div>

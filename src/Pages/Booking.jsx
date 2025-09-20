@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -6,9 +5,9 @@ import { TravelPackage, Booking } from "@/entities/all";
 import { User } from "@/entities/User";
 import { ArrowLeft, CreditCard, ShieldCheck } from "lucide-react";
 
-import BookingForm from "../components/booking/BookingForm";
-import BookingSummary from "../components/booking/BookingSummary";
-import PaymentOptions from "../components/booking/PaymentOptions";
+import BookingForm from "../components/Booking/BookingForm";
+import BookingSummary from "../components/Booking/BookingSummary";
+import PaymentOptions from "../components/Booking/PaymentOptions";
 import { Button } from "@/components/ui/button";
 
 export default function BookingPage() {
@@ -28,16 +27,16 @@ export default function BookingPage() {
       try {
         const currentUser = await User.me();
         setUser(currentUser);
-        
+
         const params = new URLSearchParams(location.search);
-        const packageId = params.get('package');
-        
+        const packageId = params.get("package");
+
         if (packageId) {
           // In a real app, you would fetch a single package by ID
           // TravelPackage.get(packageId)
           // For now, we list and filter
           const allPackages = await TravelPackage.list();
-          const foundPackage = allPackages.find(p => p.id === packageId);
+          const foundPackage = allPackages.find((p) => p.id === packageId);
           setPackage(foundPackage);
           if (foundPackage?.available_dates?.length > 0) {
             setSelectedDate(foundPackage.available_dates[0]);
@@ -58,7 +57,7 @@ export default function BookingPage() {
     setIsProcessing(true);
     try {
       const totalAmount = pkg.price * travelers;
-      
+
       const bookingData = {
         package_id: pkg.id,
         package_title: pkg.title,
@@ -72,12 +71,11 @@ export default function BookingPage() {
         payment_method: paymentMethod,
         special_requests: formData.specialRequests,
         provider_id: pkg.provider_id,
-        provider_name: pkg.provider_name
+        provider_name: pkg.provider_name,
       };
 
       const newBooking = await Booking.create(bookingData);
       navigate(createPageUrl(`BookingConfirmation?booking=${newBooking.id}`));
-
     } catch (error) {
       console.error("Error creating booking:", error);
       alert("There was an error creating your booking. Please try again.");
@@ -106,9 +104,12 @@ export default function BookingPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center text-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Package Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Package Not Found
+          </h2>
           <p className="text-gray-600 mb-6">
-            The travel package you are looking for does not exist or has been removed.
+            The travel package you are looking for does not exist or has been
+            removed.
           </p>
           <Link to={createPageUrl("SearchResults")}>
             <Button>Back to Search</Button>
@@ -122,7 +123,10 @@ export default function BookingPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
-          <Link to={createPageUrl("SearchResults")} className="flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+          <Link
+            to={createPageUrl("SearchResults")}
+            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Search Results
           </Link>
@@ -137,12 +141,12 @@ export default function BookingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Left Column: Form and Payment */}
           <div className="lg:col-span-2 space-y-8">
-            <BookingForm 
-              user={user} 
-              onSubmit={handleBooking} 
+            <BookingForm
+              user={user}
+              onSubmit={handleBooking}
               isProcessing={isProcessing}
             />
-            <PaymentOptions 
+            <PaymentOptions
               selectedMethod={paymentMethod}
               onSelectMethod={setPaymentMethod}
             />
