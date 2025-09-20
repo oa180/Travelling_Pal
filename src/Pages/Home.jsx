@@ -19,7 +19,7 @@ import { ChatMessage } from "@/entities/ChatMessage";
 import { InvokeLLM } from "@/integrations/Core";
 
 import ChatInterface from "../components/Chat/ChatInterface";
-import QuickActions from "../components/home/QuickActions";
+import QuickActions from "../components/Home/QuickActions";
 import DestinationSuggestions from "../components/home/DestinationSuggestions";
 
 export default function Home() {
