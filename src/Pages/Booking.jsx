@@ -75,7 +75,7 @@ export default function BookingPage() {
       };
 
       const newBooking = await Booking.create(bookingData);
-      navigate(createPageUrl(`BookingConfirmation?booking=${newBooking.id}`));
+      navigate(createPageUrl(`/BookingConfirmation?booking=${newBooking.id}`));
     } catch (error) {
       console.error("Error creating booking:", error);
       alert("There was an error creating your booking. Please try again.");
@@ -111,7 +111,7 @@ export default function BookingPage() {
             The travel package you are looking for does not exist or has been
             removed.
           </p>
-          <Link to={createPageUrl("SearchResults")}>
+          <Link to={createPageUrl("/SearchResults")}>
             <Button>Back to Search</Button>
           </Link>
         </div>
@@ -124,7 +124,7 @@ export default function BookingPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
           <Link
-            to={createPageUrl("SearchResults")}
+            to={createPageUrl("/SearchResults")}
             className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

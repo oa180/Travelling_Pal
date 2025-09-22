@@ -28,4 +28,66 @@ export class Booking {
     },
     required: ["package_id", "traveler_name", "traveler_email", "number_of_travelers", "total_amount"],
   };
+
+  static storageKey = "bookings";
+
+  static _read() {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(this.storageKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static _write(list) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(this.storageKey, JSON.stringify(list));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  static async list(orderBy) {
+    return this._read();
+  }
+
+  static async get(id) {
+    const list = await this.list();
+    return list.find((b) => String(b.id) === String(id)) || null;
+  }
+
+  static async create(data) {
+    const list = await this.list();
+    const nextId = String(
+      list.reduce((max, b) => Math.max(max, Number(b.id) || 0), 0) + 1
+    );
+    const created = {
+      id: nextId,
+      created_date: new Date().toISOString(),
+      status: "confirmed",
+      ...data,
+    };
+    list.push(created);
+    this._write(list);
+    return created;
+  }
+
+  static async update(id, data) {
+    const list = await this.list();
+    const idx = list.findIndex((b) => String(b.id) === String(id));
+    if (idx === -1) return null;
+    list[idx] = { ...list[idx], ...data };
+    this._write(list);
+    return list[idx];
+  }
+
+  static async delete(id) {
+    const list = await this.list();
+    const filtered = list.filter((b) => String(b.id) !== String(id));
+    this._write(filtered);
+    return true;
+  }
 }

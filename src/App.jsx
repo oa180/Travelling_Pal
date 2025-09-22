@@ -7,6 +7,7 @@ import CompanyDashboard from "./Pages/CompanyDashboard";
 import AdminPanel from "./Pages/AdminPanel";
 import BookingPage from "./Pages/Booking";
 import BookingConfirmation from "./Pages/BookingConfirmation";
+import PackageDetails from "./Pages/PackageDetails";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             path="/BookingConfirmation"
             element={<BookingConfirmation />}
           />
+          <Route path="/Package/:id" element={<PackageDetails />} />
         </Routes>
       </Layout>
     </BrowserRouter>
@@ -30,3 +32,4 @@ function App() {
 }
 
 export default App;
+

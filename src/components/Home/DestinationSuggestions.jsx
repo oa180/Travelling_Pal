@@ -1,11 +1,13 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 const destinations = [
   {
+    id: "1",
     name: "Bali, Indonesia",
     image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=250&fit=crop",
     rating: 4.8,
@@ -13,6 +15,7 @@ const destinations = [
     description: "Tropical paradise with pristine beaches"
   },
   {
+    id: "2",
     name: "Paris, France",
     image: "https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=400&h=250&fit=crop",
     rating: 4.9,
@@ -20,6 +23,7 @@ const destinations = [
     description: "City of love and timeless elegance"
   },
   {
+    id: "3",
     name: "Tokyo, Japan",
     image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=250&fit=crop",
     rating: 4.7,
@@ -27,6 +31,7 @@ const destinations = [
     description: "Modern culture meets ancient traditions"
   },
   {
+    id: "4",
     name: "Santorini, Greece",
     image: "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&h=250&fit=crop",
     rating: 4.9,
@@ -57,38 +62,40 @@ export default function DestinationSuggestions() {
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0">
-                <CardContent className="p-0">
-                  <div className="relative overflow-hidden rounded-t-lg">
-                    <img
-                      src={destination.image}
-                      alt={destination.name}
-                      className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
-                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                      <span className="text-sm font-medium">{destination.rating}</span>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
-                        {destination.name}
-                      </h3>
-                      <div className="text-blue-600 font-bold text-sm">
-                        {destination.price}
+              <Link to={createPageUrl(`/Package/${destination.id}`)}>
+                <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border-0">
+                  <CardContent className="p-0">
+                    <div className="relative overflow-hidden rounded-t-lg">
+                      <img
+                        src={destination.image}
+                        alt={destination.name}
+                        className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center space-x-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                        <span className="text-sm font-medium">{destination.rating}</span>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm mb-4">
-                      {destination.description}
-                    </p>
-                    <div className="flex items-center text-gray-500 text-sm">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      <span>View packages</span>
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {destination.name}
+                        </h3>
+                        <div className="text-blue-600 font-bold text-sm">
+                          {destination.price}
+                        </div>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        {destination.description}
+                      </p>
+                      <div className="flex items-center text-gray-500 text-sm">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        <span>View package</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             </motion.div>
           ))}
         </div>
