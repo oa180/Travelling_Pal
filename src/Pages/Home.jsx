@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatMessage } from "@/entities/ChatMessage";
-import { InvokeLLM } from "@/integrations/Core";
+import { ChatAPI } from "@/api";
+import { mapOffersListToTravelPackages } from "@/api/mappers";
 
 import ChatInterface from "../components/Chat/ChatInterface";
 import QuickActions from "../components/Home/QuickActions";
@@ -55,62 +56,37 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Generate AI response
-      const aiResponse = await InvokeLLM({
-        prompt: `You are a helpful travel assistant. The user said: "${message}". 
-        
-        Respond in a friendly, conversational way. If they mention:
-        - Budget: acknowledge it and ask about destinations or dates
-        - Destination: suggest what they might enjoy there and ask about budget/dates
-        - Dates: confirm and ask about budget or destination preferences
-        - General travel questions: provide helpful advice
-        
-        Keep responses concise (2-3 sentences max) and always end with a helpful question or suggestion.
-        If they seem ready to search for packages, suggest they use the "Search Packages" button or visit our search results.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            response: { type: "string" },
-            intent: {
-              type: "string",
-              enum: [
-                "search",
-                "budget_inquiry",
-                "destination_request",
-                "booking_help",
-                "general",
-              ],
-            },
-            extracted_data: {
-              type: "object",
-              properties: {
-                budget: { type: "number" },
-                destination: { type: "string" },
-                travel_date: { type: "string" },
-                travelers: { type: "number" },
-              },
-            },
-          },
-        },
-      });
+      // Call backend chat suggestion API
+      const payload = { prompt: message, limit: 10, sort: "price:asc" };
+      const suggest = await ChatAPI.suggest(payload);
+      const mappedOffers = Array.isArray(suggest?.offers)
+        ? mapOffersListToTravelPackages({ items: suggest.offers })
+        : [];
+
+      const summaryParts = [];
+      if (suggest?.extracted?.destination) summaryParts.push(`Destination: ${suggest.extracted.destination}`);
+      if (suggest?.extracted?.budgetMin != null) summaryParts.push(`Budget: ${suggest.extracted.budgetMin}`);
+      if (suggest?.extracted?.month && suggest?.extracted?.year) summaryParts.push(`When: ${suggest.extracted.month}/${suggest.extracted.year}`);
+      const summary = summaryParts.length ? `I parsed your request. ${summaryParts.join(" · ")}.` : "Here are some options based on your request.";
 
       const assistantMessage = {
         id: Date.now() + 1,
         type: "assistant",
-        content: aiResponse.response,
+        content: mappedOffers.length ? `${summary} I found ${mappedOffers.length} matching offer${mappedOffers.length>1?"s":""}.` : `${summary} I couldn't find matching offers right now. Try adjusting budget or dates.`,
         timestamp: new Date(),
-        intent: aiResponse.intent,
-        extractedData: aiResponse.extracted_data,
+        intent: "search",
+        extractedData: suggest?.extracted,
+        offers: mappedOffers,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Save to database
+      // Save to database (best-effort)
       await ChatMessage.create({
         message: message,
-        response: aiResponse.response,
-        intent: aiResponse.intent,
-        extracted_data: aiResponse.extracted_data,
+        response: assistantMessage.content,
+        intent: assistantMessage.intent,
+        extracted_data: assistantMessage.extractedData,
         session_id: sessionId,
       });
     } catch (error) {

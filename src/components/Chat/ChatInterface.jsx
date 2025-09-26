@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useEffect } from "react";
 import { Send, Mic, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
+import PackageCard from "@/components/Search/PackageCard";
 
 export default function ChatInterface({ 
   messages, 
@@ -57,7 +56,7 @@ export default function ChatInterface({
                 <Avatar className="w-8 h-8 flex-shrink-0">
                   <AvatarFallback className={
                     message.type === 'user' 
-                      ? 'bg-blue-500 text-white' 
+                      ? 'bg-blue-500 text-white'
                       : 'bg-gradient-to-br from-green-500 to-blue-600 text-white'
                   }>
                     {message.type === 'user' ? 'U' : 'AI'}
@@ -73,6 +72,21 @@ export default function ChatInterface({
                   }`}>
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
+                  {/* Offer cards (assistant only) */}
+                  {message.type !== 'user' && Array.isArray(message.offers) && message.offers.length > 0 && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {message.offers.map((pkg) => (
+                        <motion.div
+                          key={pkg.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <PackageCard package={pkg} />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-400 mt-2">
                     {message.timestamp.toLocaleTimeString([], { 
                       hour: '2-digit', 

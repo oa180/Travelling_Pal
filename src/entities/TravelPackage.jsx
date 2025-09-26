@@ -1,3 +1,7 @@
+import { USE_API } from "@/api/config";
+import { PackagesAPI } from "@/api/packages";
+import { mapOffersListToTravelPackages, mapOfferToTravelPackage } from "@/api/mappers";
+
 export class TravelPackage {
   static schema = {
     name: "TravelPackage",
@@ -153,23 +157,45 @@ export class TravelPackage {
   }
 
   static async list(orderBy) {
+    if (USE_API) {
+      try {
+        const data = await PackagesAPI.list();
+        return mapOffersListToTravelPackages(data);
+      } catch (e) {
+        console.warn("Falling back to local packages due to API error:", e.message);
+      }
+    }
     let list = this._read();
     if (!Array.isArray(list) || list.length === 0) {
       list = this.defaultPackages();
       this._write(list);
     }
-    // very basic ordering support if string provided like "-created_date" (ignored here)
     return list;
   }
 
   static async get(id) {
+    if (USE_API) {
+      try {
+        const offer = await PackagesAPI.get(id);
+        return mapOfferToTravelPackage(offer);
+      } catch (e) {
+        console.warn("Falling back to local package get due to API error:", e.message);
+      }
+    }
     const list = await this.list();
     return list.find((p) => String(p.id) === String(id)) || null;
   }
 
   static async create(data) {
+    if (USE_API) {
+      try {
+        // Use company endpoint per Swagger
+        return await PackagesAPI.companyCreate(data);
+      } catch (e) {
+        console.warn("Falling back to local package create due to API error:", e.message);
+      }
+    }
     const list = await this.list();
-    // assign next numeric string id
     const nextId = String(
       list.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1
     );
@@ -180,6 +206,14 @@ export class TravelPackage {
   }
 
   static async update(id, data) {
+    if (USE_API) {
+      try {
+        // Use company endpoint per Swagger
+        return await PackagesAPI.companyUpdate(id, data);
+      } catch (e) {
+        console.warn("Falling back to local package update due to API error:", e.message);
+      }
+    }
     const list = await this.list();
     const idx = list.findIndex((p) => String(p.id) === String(id));
     if (idx === -1) return null;
@@ -189,9 +223,39 @@ export class TravelPackage {
   }
 
   static async delete(id) {
+    if (USE_API) {
+      try {
+        await PackagesAPI.delete(id);
+        return true;
+      } catch (e) {
+        console.warn("Falling back to local package delete due to API error:", e.message);
+      }
+    }
     const list = await this.list();
     const filtered = list.filter((p) => String(p.id) !== String(id));
     this._write(filtered);
     return true;
+  }
+
+  // Optional server-side search using /search_offers when API is enabled
+  static async search(query) {
+    if (USE_API) {
+      try {
+        const body = query && typeof query === 'object' ? query : { q: String(query || "") };
+        const data = await PackagesAPI.search(body);
+        return mapOffersListToTravelPackages(data);
+      } catch (e) {
+        console.warn("Falling back to local packages due to API error in search:", e.message);
+      }
+    }
+    // Fallback: client-side filter over local list
+    const list = await this.list();
+    const q = (query?.q ?? query ?? "").toString().toLowerCase();
+    if (!q) return list;
+    return list.filter((pkg) =>
+      pkg.title?.toLowerCase().includes(q) ||
+      pkg.destination?.toLowerCase().includes(q) ||
+      pkg.country?.toLowerCase().includes(q)
+    );
   }
 }

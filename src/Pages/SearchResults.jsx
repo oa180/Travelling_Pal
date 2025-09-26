@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { TravelPackage } from "@/entities/TravelPackage";
+import { USE_API } from "@/api/config";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +27,26 @@ export default function SearchResults() {
     loadPackages();
   }, []);
 
+  const mapFiltersToQuery = () => {
+    // Map UI filters to backend search body
+    const query = {};
+    if (searchQuery) query.q = searchQuery;
+    if (filters?.transport && filters.transport !== "all") query.transportType = filters.transport;
+    if (filters?.accommodation && filters.accommodation !== "all") query.accommodationLevel = filters.accommodation;
+    if (filters?.rating && filters.rating !== "all") query.minStarRating = Number(filters.rating);
+    if (filters?.budget && filters.budget !== "all") {
+      const [min, max] = filters.budget.split("-").map(Number);
+      if (!Number.isNaN(min)) query.minPrice = min;
+      if (!Number.isNaN(max)) query.maxPrice = max;
+    }
+    if (sortBy) query.sort = sortBy; // backend can ignore if unsupported
+    return query;
+  };
+
   const loadPackages = async () => {
     setIsLoading(true);
     try {
-      // To test with data, you can use TravelPackage.list()
+      // Always use GET /offers to load packages; filters are applied client-side
       const data = await TravelPackage.list();
       setPackages(data);
     } catch (error) {

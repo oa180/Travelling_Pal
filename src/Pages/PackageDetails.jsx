@@ -16,17 +16,7 @@ export default function PackageDetails() {
     const fetchPackage = async () => {
       setIsLoading(true);
       try {
-        // TravelPackage.get(id) is not present, list and find instead (consistent with Booking page)
-        const all = await TravelPackage.list();
-        // Try to match by id (string or number)
-        let found = all.find((p) => String(p.id) === String(id));
-        // Fallback: if no explicit id match, interpret id as 1-based index
-        if (!found) {
-          const index = Number(id) - 1;
-          if (!Number.isNaN(index) && index >= 0 && index < all.length) {
-            found = all[index];
-          }
-        }
+        const found = await TravelPackage.get(id);
         setPkg(found || null);
       } catch (err) {
         console.error("Error loading package:", err);

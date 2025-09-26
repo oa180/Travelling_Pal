@@ -19,19 +19,15 @@ export default function BookingConfirmation() {
       try {
         const params = new URLSearchParams(location.search);
         const bookingId = params.get('booking');
-        
         if (bookingId) {
-          // Simulate fetching single booking
-          const allBookings = await Booking.list();
-          const foundBooking = allBookings.find(b => b.id === bookingId);
-          setBooking(foundBooking);
+          const foundBooking = await Booking.get(bookingId);
+          setBooking(foundBooking || null);
         }
       } catch (error) {
         console.error("Error loading booking details:", error);
       }
       setIsLoading(false);
     };
-
     fetchBooking();
   }, [location.search]);
 
