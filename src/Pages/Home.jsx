@@ -24,21 +24,27 @@ import QuickActions from "../components/Home/QuickActions";
 import DestinationSuggestions from "../components/Home/DestinationSuggestions";
 
 export default function Home() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => [{
+    id: "welcome",
+    type: "assistant",
+    content:
+      "Hi there! 👋 I'm your personal travel assistant. Tell me about your dream trip - your budget, destination preferences, or travel dates - and I'll help you find the perfect package!",
+    timestamp: new Date(),
+  }]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}`);
+  const [conversationId, setConversationId] = useState(null);
+  const chatWrapperRef = useRef(null);
 
-  // Initial welcome message
+  // Welcome message is seeded in initial state to avoid mount-time reflow
+  // Auto-scroll to chat section on initial page load
   useEffect(() => {
-    const welcomeMessage = {
-      id: "welcome",
-      type: "assistant",
-      content:
-        "Hi there! 👋 I'm your personal travel assistant. Tell me about your dream trip - your budget, destination preferences, or travel dates - and I'll help you find the perfect package!",
-      timestamp: new Date(),
-    };
-    setMessages([welcomeMessage]);
+    // Delay to ensure layout is settled
+    const id = requestAnimationFrame(() => {
+      chatWrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const handleSendMessage = async (message) => {
@@ -51,25 +57,51 @@ export default function Home() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // We'll batch all message additions into a single render to minimize reflows
+    // that can nudge the page scroll. We'll collect them and set once later.
+    let pendingAssistant = null;
+    let pendingFollowUp = null;
     setCurrentMessage("");
     setIsLoading(true);
 
+    // Capture chat wrapper top to compensate layout shift later
+    const prevTop = chatWrapperRef.current?.getBoundingClientRect().top ?? null;
+
     try {
       // Call backend chat suggestion API
-      const payload = { prompt: message, limit: 10, sort: "price:asc" };
+      const payload = {
+        prompt: message,
+        limit: 10,
+        sort: "price:asc",
+        strict: false,
+        ...(conversationId ? { conversationId } : {}),
+      };
       const suggest = await ChatAPI.suggest(payload);
+
+      // Save/refresh conversationId from response
+      if (suggest?.conversationId) {
+        setConversationId(suggest.conversationId);
+      }
       const mappedOffers = Array.isArray(suggest?.offers)
         ? mapOffersListToTravelPackages({ items: suggest.offers })
         : [];
 
+      const x = suggest?.extracted || {};
+      const isValidStr = (v) => typeof v === 'string' && v.trim() && v.toLowerCase() !== 'string';
+      const isValidNum = (v) => typeof v === 'number' && !Number.isNaN(v) && v > 0;
       const summaryParts = [];
-      if (suggest?.extracted?.destination) summaryParts.push(`Destination: ${suggest.extracted.destination}`);
-      if (suggest?.extracted?.budgetMin != null) summaryParts.push(`Budget: ${suggest.extracted.budgetMin}`);
-      if (suggest?.extracted?.month && suggest?.extracted?.year) summaryParts.push(`When: ${suggest.extracted.month}/${suggest.extracted.year}`);
+      if (isValidStr(x.destination)) summaryParts.push(`Destination: ${x.destination}`);
+      if (isValidNum(x.budgetMin) || isValidNum(x.budgetMax)) {
+        if (isValidNum(x.budgetMin) && isValidNum(x.budgetMax)) summaryParts.push(`Budget: ${x.budgetMin}-${x.budgetMax}`);
+        else if (isValidNum(x.budgetMin)) summaryParts.push(`Budget: ${x.budgetMin}`);
+        else if (isValidNum(x.budgetMax)) summaryParts.push(`Budget up to: ${x.budgetMax}`);
+      }
+      if (isValidNum(x.month) && isValidNum(x.year)) summaryParts.push(`When: ${x.month}/${x.year}`);
+      if (isValidNum(x.durationDays)) summaryParts.push(`Duration: ${x.durationDays} days`);
+      if (isValidNum(x.peopleCount)) summaryParts.push(`Travelers: ${x.peopleCount}`);
       const summary = summaryParts.length ? `I parsed your request. ${summaryParts.join(" · ")}.` : "Here are some options based on your request.";
 
-      const assistantMessage = {
+      pendingAssistant = {
         id: Date.now() + 1,
         type: "assistant",
         content: mappedOffers.length ? `${summary} I found ${mappedOffers.length} matching offer${mappedOffers.length>1?"s":""}.` : `${summary} I couldn't find matching offers right now. Try adjusting budget or dates.`,
@@ -79,16 +111,63 @@ export default function Home() {
         offers: mappedOffers,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-
       // Save to database (best-effort)
       await ChatMessage.create({
         message: message,
-        response: assistantMessage.content,
-        intent: assistantMessage.intent,
-        extracted_data: assistantMessage.extractedData,
+        response: pendingAssistant.content,
+        intent: pendingAssistant.intent,
+        extracted_data: pendingAssistant.extractedData,
         session_id: sessionId,
       });
+
+      // Choose a sensible follow-up question if provided
+      const pickNextQuestion = (extracted, nextQuestions) => {
+        if (!Array.isArray(nextQuestions) || nextQuestions.length === 0) return null;
+        const qlist = nextQuestions;
+        const pickByIncludes = (needleArray) => qlist.find((q) => needleArray.some((n) => q.toLowerCase().includes(n)));
+        const x = extracted || {};
+        // Priority: budget -> dates -> duration -> people -> transport -> accommodation
+        if (x.budgetMin == null && x.budgetMax == null) {
+          return pickByIncludes(["budget", "$", "price"]);
+        }
+        if ((x.month == null || x.year == null)) {
+          return pickByIncludes(["when", "month", "year", "date"]);
+        }
+        if (x.durationDays == null) {
+          return pickByIncludes(["days", "duration"]);
+        }
+        if (x.peopleCount == null) {
+          return pickByIncludes(["people", "traveler", "person", "guests"]);
+        }
+        if (x.transportType == null) {
+          return pickByIncludes(["transport", "flight", "train", "bus"]);
+        }
+        if (x.accommodationLevel == null) {
+          return pickByIncludes(["accommodation", "hotel", "luxury", "standard", "premium"]);
+        }
+        // Default to the first suggested question
+        return qlist[0] || null;
+      };
+
+      // Prefer explicit nextQuestion (string) if present, else fall back to list-based selection
+      const followUp = typeof suggest?.nextQuestion === 'string' && suggest.nextQuestion.trim()
+        ? suggest.nextQuestion
+        : pickNextQuestion(suggest?.extracted, suggest?.nextQuestions);
+      if (followUp) {
+        pendingFollowUp = {
+          id: Date.now() + 2,
+          type: "assistant",
+          content: followUp,
+          timestamp: new Date(),
+        };
+        await ChatMessage.create({
+          message: "",
+          response: pendingFollowUp.content,
+          intent: "clarifying_question",
+          extracted_data: null,
+          session_id: sessionId,
+        });
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage = {
@@ -98,10 +177,35 @@ export default function Home() {
           "I'm sorry, I'm having trouble connecting right now. Please try again in a moment!",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => {
+        const base = [...prev, userMessage];
+        return [...base, errorMessage];
+      });
+      setIsLoading(false);
+      return; // early exit on error
     }
 
+    // Apply all message updates in one go
+    setMessages((prev) => {
+      const next = [...prev, userMessage];
+      if (pendingAssistant) next.push(pendingAssistant);
+      if (pendingFollowUp) next.push(pendingFollowUp);
+      return next;
+    });
+
     setIsLoading(false);
+    // After DOM updates, compensate any vertical shift of the chat wrapper
+    try {
+      requestAnimationFrame(() => {
+        const newTop = chatWrapperRef.current?.getBoundingClientRect().top ?? null;
+        if (prevTop != null && newTop != null) {
+          const delta = newTop - prevTop;
+          if (Math.abs(delta) > 1) {
+            window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+          }
+        }
+      });
+    } catch {}
   };
 
   const handleQuickAction = (action) => {
@@ -138,7 +242,11 @@ export default function Home() {
           </div>
 
           {/* Main Chat Interface */}
-          <div className="max-w-4xl mx-auto">
+          <div
+            className="max-w-4xl mx-auto"
+            style={{ overflowAnchor: 'none', overscrollBehavior: 'contain' }}
+            ref={chatWrapperRef}
+          >
             <ChatInterface
               messages={messages}
               onSendMessage={handleSendMessage}

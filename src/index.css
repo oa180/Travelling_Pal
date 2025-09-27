@@ -53,6 +53,9 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
+/* Note: Keep default browser scroll behavior on page load. Component-level
+   styles handle jump prevention inside the chat area. */
+
 * {
   border-color: hsl(var(--border));
 }

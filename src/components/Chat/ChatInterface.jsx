@@ -12,7 +12,8 @@ export default function ChatInterface({
   onSendMessage, 
   currentMessage, 
   setCurrentMessage, 
-  isLoading 
+  isLoading,
+  autoScroll = false,
 }) {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -21,12 +22,19 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+    if (autoScroll) scrollToBottom();
+  }, [messages, autoScroll]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (currentMessage.trim() && !isLoading) {
       onSendMessage(currentMessage);
+      // Blur input to prevent the browser from auto-scrolling the page
+      // to keep the caret in view when new content is appended.
+      try {
+        inputRef.current?.blur();
+      } catch {}
     }
   };
 
@@ -41,7 +49,7 @@ export default function ChatInterface({
     <Card className="w-full bg-white/95 backdrop-blur-sm shadow-xl border-0">
       <CardContent className="p-0">
         {/* Messages Area */}
-        <div className="h-96 overflow-y-auto p-6 space-y-6">
+        <div className="h-96 overflow-y-auto p-6 space-y-6" style={{ overflowAnchor: 'none' }}>
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div

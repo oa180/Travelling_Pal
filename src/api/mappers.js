@@ -12,8 +12,10 @@ export function mapOfferToTravelPackage(offer) {
     (Array.isArray(offer.galleryImages) ? offer.galleryImages[0] : undefined) ??
     (Array.isArray(offer.images) ? offer.images[0] : undefined) ??
     undefined;
+  const id = offer.id ?? offer.offerId;
+  if (id === undefined || id === null || String(id).trim() === "") return null;
   return {
-    id: String(offer.id ?? offer.offerId ?? ""),
+    id: String(id),
     title: offer.title ?? "",
     destination: offer.destination ?? "",
     description: offer.description ?? "",

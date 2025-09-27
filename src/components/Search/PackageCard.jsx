@@ -15,6 +15,8 @@ export default function PackageCard({ package: pkg }) {
             <img
               src={pkg.image_url || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=300&fit=crop`}
               alt={pkg.destination}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
