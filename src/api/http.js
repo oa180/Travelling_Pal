@@ -6,6 +6,14 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
+function getAuthToken() {
+  try {
+    return localStorage.getItem("auth_token") || null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleResponse(res) {
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
@@ -47,11 +55,14 @@ export async function apiFetch(path, { method = "GET", params, body, headers } =
       headers,
     });
   }
+  const token = getAuthToken();
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(url.toString(), {
     method,
-    headers: { ...defaultHeaders, ...(headers || {}) },
+    headers: { ...defaultHeaders, ...authHeaders, ...(headers || {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    credentials: "include",
+    // For JWT we do not need cookies
+    credentials: "omit",
   });
 
   return handleResponse(res);

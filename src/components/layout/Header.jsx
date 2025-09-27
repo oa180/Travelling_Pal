@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
@@ -8,33 +8,23 @@ import {
   Shield, 
   Search
 } from "lucide-react";
+import { useAuth, ROLE } from "@/contexts/AuthContext";
 
-const navigationItems = [
-  {
-    title: "Chat & Search",
-    url: createPageUrl("Home"),
-    icon: MessageSquare,
-  },
-  {
-    title: "Search Results",
-    url: createPageUrl("SearchResults"),
-    icon: Search,
-  },
-  {
-    title: "Company Dashboard",
-    url: createPageUrl("CompanyDashboard"),
-    icon: Building,
-  },
-  {
-    title: "Admin Panel",
-    url: createPageUrl("AdminPanel"),
-    icon: Shield,
-  }
-];
+function buildNav(role) {
+  const base = [
+    { title: "Chat & Search", url: createPageUrl("Home"), icon: MessageSquare },
+    { title: "Search Results", url: createPageUrl("SearchResults"), icon: Search },
+  ];
+  if (role === ROLE.COMPANY) base.push({ title: "Company Dashboard", url: createPageUrl("CompanyDashboard"), icon: Building });
+  if (role === ROLE.ADMIN) base.push({ title: "Admin Panel", url: createPageUrl("AdminPanel"), icon: Shield });
+  return base;
+}
 
 export default function Header() {
   const location = useLocation();
+  const { isAuthenticated, role, user, logout } = useAuth();
   const isActivePage = (url) => location.pathname === url;
+  const navigationItems = useMemo(() => buildNav(role), [role]);
 
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-r from-sky-600 via-fuchsia-600 to-emerald-600 text-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.5)]">
@@ -72,19 +62,19 @@ export default function Header() {
             ))}
           </nav>
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-inset ring-white/20 text-white/90 focus-within:ring-white/40">
-              <Search className="w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent placeholder-white/70 focus:outline-none text-sm w-44"
-              />
-            </div>
-            <div className="h-9 w-9 rounded-full p-[2px] bg-gradient-to-tr from-amber-400 via-pink-500 to-indigo-500">
-              <div className="h-full w-full rounded-full bg-black/60 ring-1 ring-inset ring-white/20 flex items-center justify-center text-xs font-semibold">
-                TC
+            {!isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Link to="/login" className="px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-inset ring-white/20 text-white/90 hover:bg-white/25 text-sm">Log in</Link>
+                <Link to="/signup" className="px-3 py-1.5 rounded-full bg-white text-sky-700 hover:bg-sky-50 text-sm">Sign up</Link>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-inset ring-white/20 text-white/90 text-xs">
+                  {user?.name || user?.email || user?.mobile || 'Account'} {role ? `· ${role}` : ''}
+                </span>
+                <button onClick={logout} className="px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-inset ring-white/20 text-white/90 hover:bg-white/25 text-sm">Logout</button>
+              </div>
+            )}
           </div>
           </div>
         </div>
