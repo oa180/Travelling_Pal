@@ -79,6 +79,22 @@ export default function Header() {
               </>
             )}
           </div>
+          {/* Desktop auth controls */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            {!isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Link to="/login" className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200 dark:bg-white/15 dark:text-white/90 dark:ring-white/20 dark:hover:bg-white/25">Log in</Link>
+                <Link to="/signup" className="px-3 py-1.5 rounded-full bg-sky-600 text-white hover:bg-sky-700 text-sm dark:bg-white dark:text-sky-700 dark:hover:bg-sky-50">Sign up</Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-full text-xs ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 dark:bg-white/15 dark:text-white/90 dark:ring-white/20">
+                  {user?.name || user?.email || user?.mobile || 'Account'} {role ? `· ${role}` : ''}
+                </span>
+                <button onClick={logout} className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200 dark:bg-white/15 dark:text-white/90 dark:ring-white/20 dark:hover:bg-white/25">Logout</button>
+              </div>
+            )}
+          </div>
           </div>
         </div>
       </div>
