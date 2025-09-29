@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { TravelPackage, Booking, Company, User } from "@/entities/all";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Package, TrendingUp, Users, Star, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CompanyAnalyticsAPI } from "@/api";
+import FiltersBar from "@/components/Company/FiltersBar";
+import TimeSeriesChart from "@/components/Company/TimeSeriesChart";
+import ComboChart from "@/components/Company/ComboChart";
+import DonutChart from "@/components/Company/DonutChart";
+import TopPackagesTable from "@/components/Company/TopPackagesTable";
+import RecentBookingsList from "@/components/Company/RecentBookingsList";
+import FunnelChart from "@/components/Company/FunnelChart";
+import Heatmap from "@/components/Company/Heatmap";
+import { useAuth } from "@/contexts/AuthContext";
 
 import DashboardStats from "../components/Company/DashboardStats";
 import PackageManagement from "../components/Company/PackageManagement";
@@ -12,7 +21,7 @@ import AddPackageModal from "../components/Company/AddPackageModal";
 import CompanyProfile from "../components/Company/CompanyProfile";
 
 export default function CompanyDashboard() {
-  const [user, setUser] = useState(null);
+  const { user: authUser } = useAuth();
   const [company, setCompany] = useState(null);
   const [packages, setPackages] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -26,77 +35,91 @@ export default function CompanyDashboard() {
     searchAppearances: 0,
   });
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    setIsLoading(true);
+  // Analytics state
+  const [filters, setFilters] = useState(() => {
+    const today = new Date();
+    const from = new Date();
+    from.setDate(today.getDate() - 45); // widen default window to include recent seeds
+    const to = new Date();
+    to.setDate(today.getDate() + 14); // include near-future dates (e.g., 2025-10-02/05)
+    const pad = (n) => String(n).padStart(2, "0");
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
+      const saved = localStorage.getItem("company_dashboard_filters");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { from: fmt(from), to: fmt(to), companyId: authUser?.companyId ?? null, packageId: null, destination: null };
+  });
+  const [summary, setSummary] = useState(null);
+  const [topPackagesData, setTopPackagesData] = useState([]);
+  const [recentBookingsData, setRecentBookingsData] = useState([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [errorAnalytics, setErrorAnalytics] = useState("");
 
-      // Get or create company profile
-      let userCompany = await Company.filter({ created_by: currentUser.email });
-      if (userCompany.length === 0) {
-        // Create default company if none exists
-        userCompany = await Company.create({
-          company_name: "My Travel Company",
-          company_type: "travel_agency",
-          contact_email: currentUser.email,
-          description: "Add your company description here",
-          is_active: true,
-        });
-        setCompany(userCompany);
-      } else {
-        setCompany(userCompany[0]);
-      }
-
-      // Load packages for this company
-      const companyPackages = await TravelPackage.filter(
-        {
-          created_by: currentUser.email,
-        },
-        "-created_date"
-      );
-      setPackages(companyPackages);
-
-      // Load bookings for this company's packages
-      const packageIds = companyPackages.map((pkg) => pkg.id);
-      let companyBookings = [];
-      if (packageIds.length > 0) {
-        companyBookings = await Booking.list("-created_date");
-        companyBookings = companyBookings.filter((booking) =>
-          packageIds.includes(booking.package_id)
-        );
-      }
-      setBookings(companyBookings);
-
-      // Calculate stats
-      const totalRevenue = companyBookings
-        .filter((b) => b.status === "confirmed")
-        .reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
-
-      const averageRating =
-        companyPackages.length > 0
-          ? companyPackages.reduce(
-              (sum, pkg) => sum + (pkg.star_rating || 0),
-              0
-            ) / companyPackages.length
-          : 0;
-
-      setStats({
-        totalPackages: companyPackages.length,
-        totalBookings: companyBookings.length,
-        totalRevenue,
-        averageRating: Math.round(averageRating * 10) / 10,
-        searchAppearances: companyPackages.length * 15, // Simulated metric
-      });
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
+  useEffect(() => {
+    // Seed minimal company from auth user
+    if (authUser) {
+      setCompany((prev) => ({
+        id: authUser.companyId ?? prev?.id ?? null,
+        company_name: prev?.company_name || "My Travel Company",
+        company_type: prev?.company_type || "travel_agency",
+        contact_email: authUser.email || prev?.contact_email || "",
+        is_active: true,
+      }));
+      // Ensure filters carry companyId only if not already set
+      setFilters((f) => (f.companyId == null && authUser.companyId != null ? { ...f, companyId: authUser.companyId } : f));
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  };
+  }, [authUser]);
+
+  // Persist filters
+  useEffect(() => {
+    try { localStorage.setItem("company_dashboard_filters", JSON.stringify(filters)); } catch {}
+  }, [filters]);
+
+  // Fetch analytics when filters are ready (debounced)
+  useEffect(() => {
+    if (!filters.from || !filters.to) return;
+    const params = {
+      from: filters.from,
+      to: filters.to,
+      packageId: filters.packageId || undefined,
+      destination: filters.destination || undefined,
+    };
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setLoadingAnalytics(true);
+      setErrorAnalytics("");
+      try {
+        if (import.meta?.env?.VITE_DEBUG_API === 'true') {
+          // eslint-disable-next-line no-console
+          console.log('[Analytics] Fetch', params);
+        }
+        const [sum, tops, rec] = await Promise.all([
+          CompanyAnalyticsAPI.getSummary(params),
+          CompanyAnalyticsAPI.getTopPackages({ from: filters.from, to: filters.to, sort: "revenue", limit: 20 }),
+          CompanyAnalyticsAPI.getRecentBookings({ from: filters.from, to: filters.to, limit: 20 }),
+        ]);
+        if (cancelled) return;
+        setSummary(sum || null);
+        setTopPackagesData(Array.isArray(tops?.items) ? tops.items : []);
+        setRecentBookingsData(Array.isArray(rec?.items) ? rec.items : []);
+        setStats((prev) => ({
+          ...prev,
+          totalRevenue: Number(sum?.revenueTotal || 0),
+          totalBookings: Number(sum?.bookingsTotal || 0),
+        }));
+      } catch (e) {
+        if (!cancelled) setErrorAnalytics(e?.body?.message || e?.message || "Failed to load analytics");
+      } finally {
+        if (!cancelled) setLoadingAnalytics(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [filters.from, filters.to, filters.packageId, filters.destination]);
+
+  // No-op now (legacy entity calls removed)
+  const loadDashboardData = async () => {};
 
   const handleAddPackage = async (packageData) => {
     try {
@@ -154,12 +177,30 @@ export default function CompanyDashboard() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        <DashboardStats stats={stats} isLoading={isLoading} />
+        {/* Filters */}
+        <div className="mb-6">
+          <FiltersBar
+            companyId={filters.companyId || company?.id || authUser?.companyId}
+            value={filters}
+            onChange={(v) => setFilters((prev) => ({ ...prev, ...v }))}
+            testId="filters-bar"
+          />
+        </div>
+
+        {/* Stats Cards (map from analytics summary when ready) */}
+        <DashboardStats
+          stats={{
+            totalPackages: stats.totalPackages,
+            totalBookings: summary?.bookingsTotal ?? stats.totalBookings,
+            totalRevenue: summary?.revenueTotal ?? stats.totalRevenue,
+            averageRating: stats.averageRating,
+          }}
+          isLoading={isLoading || loadingAnalytics}
+        />
 
         {/* Main Content */}
         <div className="mt-8">
-          <Tabs defaultValue="packages" className="w-full">
+          <Tabs defaultValue="analytics" className="w-full">
             <TabsList className="grid w-full md:w-auto grid-cols-4 mb-6">
               <TabsTrigger value="packages" className="flex items-center gap-2">
                 <Package className="w-4 h-4" />
@@ -194,45 +235,54 @@ export default function CompanyDashboard() {
             </TabsContent>
 
             <TabsContent value="analytics">
+              {errorAnalytics && (
+                <Card className="mb-4">
+                  <CardContent className="p-4 text-sm text-red-600">{errorAnalytics}</CardContent>
+                </Card>
+              )}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue Trends</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-center justify-center text-gray-500">
-                      Revenue chart will be displayed here
-                    </div>
-                  </CardContent>
-                </Card>
+                <TimeSeriesChart
+                  title="Revenue"
+                  series={[{ label: "Revenue", data: summary?.timeSeries?.revenue || [] }]}
+                  testId="chart-revenue"
+                />
+                <TimeSeriesChart
+                  title="Bookings"
+                  series={[{ label: "Bookings", data: summary?.timeSeries?.bookings || [] }]}
+                  testId="chart-bookings"
+                />
+                <ComboChart
+                  title="Impressions vs Clicks"
+                  bars={[
+                    { label: "Impressions", data: summary?.timeSeries?.impressions || [] },
+                    { label: "Clicks", data: summary?.timeSeries?.clicks || [] },
+                  ]}
+                  testId="chart-imp-clicks"
+                />
+                <DonutChart
+                  title="Booking Status"
+                  items={summary?.statusDistribution || []}
+                  testId="chart-status"
+                />
+                <FunnelChart
+                  title="Conversion Funnel"
+                  funnel={summary?.funnel || {}}
+                  testId="chart-funnel"
+                />
+                <Heatmap
+                  title="Bookings by Month"
+                  items={summary?.byMonth || []}
+                  testId="chart-heatmap"
+                />
+              </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Popular Destinations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {packages.slice(0, 5).map((pkg) => (
-                        <div
-                          key={pkg.id}
-                          className="flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="font-medium">{pkg.destination}</p>
-                            <p className="text-sm text-gray-500">{pkg.title}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">${pkg.price}</p>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Star className="w-3 h-3 mr-1 fill-current text-yellow-500" />
-                              {pkg.star_rating}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <TopPackagesTable
+                  items={topPackagesData}
+                  onRowClick={(row) => setFilters((p) => ({ ...p, packageId: row.packageId }))}
+                  testId="top-packages-table"
+                />
+                <RecentBookingsList items={recentBookingsData} testId="recent-bookings" />
               </div>
             </TabsContent>
 

@@ -19,6 +19,20 @@ function readToken() {
   }
 }
 
+function getTokenPayload() {
+  const tok = readToken();
+  if (!tok) return null;
+  const parts = tok.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(atob(payload));
+    return json || null;
+  } catch {
+    return null;
+  }
+}
+
 function writeToken(token, remember = true) {
   try {
     // Clear both storages first
@@ -40,8 +54,14 @@ export function AuthProvider({ children }) {
   const loadMe = useCallback(async () => {
     try {
       const me = await AuthAPI.me();
-      setUser(me);
-      return me;
+      const u = me?.user ?? me;
+      const jwt = getTokenPayload();
+      setUser((prev) => ({
+        ...u,
+        role: u?.role ?? jwt?.role ?? prev?.role ?? null,
+        companyId: u?.companyId ?? jwt?.companyId ?? prev?.companyId ?? null,
+      }));
+      return u;
     } catch (e) {
       setUser(null);
       return null;
@@ -61,19 +81,37 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async ({ email, mobile, password, remember = true }) => {
     const res = await AuthAPI.login({ email, mobile, password });
-    // Expect token in res.token or res.accessToken
     const tok = res?.token || res?.accessToken;
     if (tok) writeToken(tok, remember);
+    if (res?.user) {
+      const jwt = getTokenPayload();
+      setUser({
+        ...res.user,
+        role: res.user?.role ?? jwt?.role ?? null,
+        companyId: res.user?.companyId ?? jwt?.companyId ?? null,
+      });
+      setLoading(false);
+      return res.user;
+    }
     const me = await loadMe();
-    return me || res;
+    return me;
   }, [loadMe]);
 
   const signup = useCallback(async ({ email, mobile, password, role = ROLE.TRAVELER, remember = true }) => {
     const res = await AuthAPI.signup({ email, mobile, password, role });
     const tok = res?.token || res?.accessToken;
     if (tok) writeToken(tok, remember);
+    if (res?.user) {
+      const jwt = getTokenPayload();
+      setUser({
+        ...res.user,
+        role: res.user?.role ?? jwt?.role ?? null,
+        companyId: res.user?.companyId ?? jwt?.companyId ?? null,
+      });
+      return res.user;
+    }
     const me = await loadMe();
-    return me || res;
+    return me;
   }, [loadMe]);
 
   const logout = useCallback(async () => {

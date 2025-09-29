@@ -8,7 +8,7 @@ const defaultHeaders = {
 
 function getAuthToken() {
   try {
-    return localStorage.getItem("auth_token") || null;
+    return localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token") || null;
   } catch {
     return null;
   }
