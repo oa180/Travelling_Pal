@@ -8,6 +8,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function PackageDetails() {
+  const formatYMD = (val) => {
+    try {
+      if (!val) return "";
+      if (typeof val === "string" && val.includes("T")) return val.split("T")[0];
+      const d = new Date(val);
+      if (!isNaN(d)) return d.toISOString().slice(0, 10);
+      return String(val);
+    } catch {
+      return String(val);
+    }
+  };
   const { id } = useParams();
   const [pkg, setPkg] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,7 +149,7 @@ export default function PackageDetails() {
                     <div className="flex flex-wrap gap-2">
                       {pkg.available_dates.slice(0, 8).map((d) => (
                         <span key={d} className="px-3 py-1 rounded-full border border-gray-700 text-gray-300">
-                          {d}
+                          {formatYMD(d)}
                         </span>
                       ))}
                     </div>

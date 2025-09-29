@@ -26,7 +26,19 @@ export default function TimeSeriesChart({ title, series = [], testId }) {
       tension: 0.25,
     })),
   };
-  const options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } }, scales: { x: { grid: { display: false } } } };
+  const yLabel = series[0]?.label || "Value";
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top' },
+      title: { display: true, text: title },
+    },
+    scales: {
+      x: { grid: { display: false }, title: { display: true, text: 'Date' } },
+      y: { beginAtZero: true, title: { display: true, text: yLabel } },
+    },
+  };
   return (
     <Card data-testid={testId}>
       <CardHeader>

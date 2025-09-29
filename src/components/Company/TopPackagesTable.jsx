@@ -18,7 +18,7 @@ export default function TopPackagesTable({ items = [], sort = "revenue", onSortC
     <Card data-testid={testId}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Top Packages</span>
+          <span className="text-gray-500"> Top Packages</span>
           <div className="text-xs text-gray-500 space-x-2">
             <button onClick={() => changeSort("revenue")} className={localSort === "revenue" ? "underline" : "opacity-80"}>Revenue</button>
             <button onClick={() => changeSort("bookings")} className={localSort === "bookings" ? "underline" : "opacity-80"}>Bookings</button>
@@ -40,10 +40,10 @@ export default function TopPackagesTable({ items = [], sort = "revenue", onSortC
             <tbody>
               {sorted.map((row) => (
                 <tr key={row.packageId} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => onRowClick && onRowClick(row)}>
-                  <td className="py-2 pr-4 font-medium">{row.title}</td>
-                  <td className="py-2 pr-4">${Number(row.revenue || 0).toLocaleString()}</td>
-                  <td className="py-2 pr-4">{row.bookings}</td>
-                  <td className="py-2 pr-4">{(Number(row.ctr || 0) * 100).toFixed(2)}%</td>
+                  <td className="  text-gray-500 py-2 pr-4 font-medium">{row.title}</td>
+                  <td className=" text-gray-500 py-2 pr-4">${Number(row.revenue || 0).toLocaleString()}</td>
+                  <td className=" text-gray-500 py-2 pr-4">{row.bookings}</td>
+                  <td className=" text-gray-500 py-2 pr-4">{(Number(row.ctr || 0) * 100).toFixed(2)}%</td>
                 </tr>
               ))}
               {sorted.length === 0 && (

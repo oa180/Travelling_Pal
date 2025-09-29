@@ -1,18 +1,16 @@
-
-
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Package, Users, DollarSign, Star, Eye, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardStats({ stats, isLoading }) {
-  const statCards = [
+  const baseCards = [
     {
       title: "Total Packages",
       value: stats.totalPackages,
       icon: Package,
       color: "bg-blue-500",
-      trend: "+12% this month"
+      trend: "+0%"
     },
     {
       title: "Total Bookings", 
@@ -37,10 +35,31 @@ export default function DashboardStats({ stats, isLoading }) {
     }
   ];
 
+  const extraCards = [];
+  if (typeof stats.impressions === "number") {
+    extraCards.push({
+      title: "Impressions",
+      value: stats.impressions.toLocaleString(),
+      icon: Eye,
+      color: "bg-indigo-500",
+      trend: "scope-wide",
+    });
+  }
+  if (typeof stats.clicks === "number") {
+    extraCards.push({
+      title: "Clicks",
+      value: stats.clicks.toLocaleString(),
+      icon: TrendingUp,
+      color: "bg-rose-500",
+      trend: "scope-wide",
+    });
+  }
+  const statCards = [...baseCards, ...extraCards];
+
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array(4).fill(0).map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+        {Array(6).fill(0).map((_, i) => (
           <Card key={i}>
             <CardContent className="p-6">
               <Skeleton className="h-4 w-24 mb-2" />

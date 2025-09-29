@@ -13,6 +13,8 @@ import RecentBookingsList from "@/components/Company/RecentBookingsList";
 import FunnelChart from "@/components/Company/FunnelChart";
 import Heatmap from "@/components/Company/Heatmap";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
+import { PackagesAPI } from "@/api/packages";
 
 import DashboardStats from "../components/Company/DashboardStats";
 import PackageManagement from "../components/Company/PackageManagement";
@@ -22,6 +24,7 @@ import CompanyProfile from "../components/Company/CompanyProfile";
 
 export default function CompanyDashboard() {
   const { user: authUser } = useAuth();
+  const { toast } = useToast();
   const [company, setCompany] = useState(null);
   const [packages, setPackages] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -51,7 +54,8 @@ export default function CompanyDashboard() {
     return { from: fmt(from), to: fmt(to), companyId: authUser?.companyId ?? null, packageId: null, destination: null };
   });
   const [summary, setSummary] = useState(null);
-  const [topPackagesData, setTopPackagesData] = useState([]);
+  const [topPackagesData, setTopPackagesData] = useState([]); // analytics-based (if available)
+  const [offersTopPackages, setOffersTopPackages] = useState([]); // mapped from /offers
   const [recentBookingsData, setRecentBookingsData] = useState([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [errorAnalytics, setErrorAnalytics] = useState("");
@@ -108,6 +112,8 @@ export default function CompanyDashboard() {
           ...prev,
           totalRevenue: Number(sum?.revenueTotal || 0),
           totalBookings: Number(sum?.bookingsTotal || 0),
+          impressions: Number(sum?.impressions ?? 0),
+          clicks: Number(sum?.clicks ?? 0),
         }));
       } catch (e) {
         if (!cancelled) setErrorAnalytics(e?.body?.message || e?.message || "Failed to load analytics");
@@ -118,20 +124,95 @@ export default function CompanyDashboard() {
     return () => { cancelled = true; clearTimeout(t); };
   }, [filters.from, filters.to, filters.packageId, filters.destination]);
 
-  // No-op now (legacy entity calls removed)
-  const loadDashboardData = async () => {};
+  // Load offers and map to TopPackagesTable items
+  const loadDashboardData = async () => {
+    try {
+      const params = { companyId: filters.companyId || company?.id || authUser?.companyId };
+      const res = await PackagesAPI.list(params);
+      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : [];
+      const mapped = items.map((o) => ({
+        packageId: o.id || o.offer_id || o.packageId,
+        title: o.title || o.name || `Offer ${o.id || ''}`,
+        // Use price as a proxy for revenue when analytics is not available
+        revenue: Number(o.price || 0),
+        bookings: Number(o.bookings || 0),
+        ctr: Number(o.ctr || 0),
+      }));
+      setOffersTopPackages(mapped);
+      // also keep packages list for the Packages tab component if it relies on it
+      setPackages(items);
+      // keep KPI in sync with offers count
+      setStats((prev) => ({ ...prev, totalPackages: Array.isArray(items) ? items.length : 0 }));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to load offers for TopPackages table', e);
+      setOffersTopPackages([]);
+    }
+  };
+
+  // Auto-load offers when company context becomes available/changes
+  useEffect(() => {
+    loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.companyId, company?.id]);
 
   const handleAddPackage = async (packageData) => {
     try {
-      const newPackage = await TravelPackage.create({
+      // Normalize payload to satisfy backend validation
+      const dateOnly = (d) => {
+        if (!d) return undefined;
+        // Accept Date, ISO string, or YYYY-MM-DD; return YYYY-MM-DD
+        try {
+          if (typeof d === 'string') return d.slice(0, 10);
+          const iso = new Date(d).toISOString();
+          return iso.slice(0, 10);
+        } catch {
+          return undefined;
+        }
+      };
+      const avail = Array.isArray(packageData.availableDates)
+        ? packageData.availableDates
+        : Array.isArray(packageData.available_dates)
+          ? packageData.available_dates
+          : [];
+      const sorted = [...avail].filter(Boolean).map(dateOnly).filter(Boolean).sort();
+      // Compute fallbacks for dates if missing
+      const today = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const todayYMD = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+      const dur = Number(packageData.durationDays ?? packageData.duration_days ?? 7) || 7;
+      const end = new Date(today);
+      end.setDate(end.getDate() + dur);
+      const endYMD = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`;
+      const payload = {
         ...packageData,
-        provider_name: company?.company_name || "My Travel Company",
-      });
-      setPackages((prev) => [newPackage, ...prev]);
+        // Ensure required types/fields
+        description: typeof packageData.description === 'string' ? packageData.description : String(packageData.description || ''),
+        companyId: Number(authUser?.companyId ?? company?.id ?? NaN),
+        startDate: dateOnly(packageData.startDate) || sorted[0] || todayYMD,
+        endDate: dateOnly(packageData.endDate) || sorted[sorted.length - 1] || endYMD,
+      };
+
+      // Create via protected endpoint /company/offers
+      const created = await PackagesAPI.companyCreate(payload);
+      // Optimistically update local state with created offer
+      setPackages((prev) => [created, ...prev]);
       setShowAddPackage(false);
-      loadDashboardData(); // Refresh stats
+      // Refresh offers list and KPI/TopPackages mapping
+      loadDashboardData();
+      toast({
+        title: "Package created",
+        description: `${created?.title || 'Offer'} was added successfully`,
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error adding package:", error);
+      toast({
+        title: "Failed to create package",
+        description: error?.body?.message || error?.message || "Unknown error",
+        variant: "error",
+        duration: 6000,
+      });
     }
   };
 
@@ -194,6 +275,8 @@ export default function CompanyDashboard() {
             totalBookings: summary?.bookingsTotal ?? stats.totalBookings,
             totalRevenue: summary?.revenueTotal ?? stats.totalRevenue,
             averageRating: stats.averageRating,
+            impressions: summary?.impressions ?? stats.impressions ?? 0,
+            clicks: summary?.clicks ?? stats.clicks ?? 0,
           }}
           isLoading={isLoading || loadingAnalytics}
         />
@@ -240,7 +323,7 @@ export default function CompanyDashboard() {
                   <CardContent className="p-4 text-sm text-red-600">{errorAnalytics}</CardContent>
                 </Card>
               )}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6  text-gray-500">
                 <TimeSeriesChart
                   title="Revenue"
                   series={[{ label: "Revenue", data: summary?.timeSeries?.revenue || [] }]}
@@ -278,7 +361,7 @@ export default function CompanyDashboard() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <TopPackagesTable
-                  items={topPackagesData}
+                  items={offersTopPackages && offersTopPackages.length ? offersTopPackages : topPackagesData}
                   onRowClick={(row) => setFilters((p) => ({ ...p, packageId: row.packageId }))}
                   testId="top-packages-table"
                 />
