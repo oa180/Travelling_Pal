@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
@@ -7,6 +7,8 @@ import {
   Building, 
   Shield, 
   Search,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth, ROLE } from "@/contexts/AuthContext";
 
@@ -25,6 +27,7 @@ export default function Header() {
   const { isAuthenticated, role, user, logout } = useAuth();
   const isActivePage = (url) => location.pathname === url;
   const navigationItems = useMemo(() => buildNav(role), [role]);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 text-gray-900 dark:text-white shadow-[0_2px_20px_-4px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_20px_-4px_rgba(0,0,0,0.5)] bg-white/90 border-b border-gray-200 dark:border-transparent dark:bg-gradient-to-r dark:from-sky-600 dark:via-fuchsia-600 dark:to-emerald-600">
@@ -42,7 +45,7 @@ export default function Header() {
               </div>
             </Link>
           </div>
-          <nav className="flex-1 min-w-0 flex items-center gap-1 flex-nowrap overflow-x-auto no-scrollbar">
+          <nav className="flex-1 min-w-0 hidden md:flex items-center gap-1 flex-nowrap overflow-x-auto no-scrollbar">
             {navigationItems.map((item) => (
               <Link
                 key={item.title}
@@ -63,6 +66,14 @@ export default function Header() {
               </Link>
             ))}
           </nav>
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg ring-1 ring-inset ring-gray-200 hover:bg-gray-100 text-gray-700"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
           {/* Mobile auth controls */}
           <div className="flex md:hidden items-center gap-2 shrink-0">
             {!isAuthenticated ? (
@@ -91,13 +102,52 @@ export default function Header() {
                 <span className="px-3 py-1.5 rounded-full text-xs ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 dark:bg-white/15 dark:text-white/90 dark:ring-white/20">
                   {user?.name || user?.email || user?.mobile || 'Account'} {role ? `· ${role}` : ''}
                 </span>
-                <button onClick={logout} className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200 dark:bg-white/15 dark:text-white/90 dark:ring-white/20 dark:hover:bg-white/25">Logout</button>
+                <button onClick={() => { setMobileOpen(false); logout(); }} className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200">Logout</button>
               </div>
             )}
           </div>
-          </div>
         </div>
       </div>
+      </div>
+      {/* Mobile dropdown panel */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-gray-200 bg-white">
+          <div className="container mx-auto px-4 py-3 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {navigationItems.map((item) => (
+                <Link
+                  key={item.title}
+                  to={item.url}
+                  onClick={() => setMobileOpen(false)}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm ring-1 ring-inset ${
+                    isActivePage(item.url)
+                      ? 'text-sky-700 bg-sky-50 ring-sky-100'
+                      : 'text-gray-700 bg-white ring-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.title}</span>
+                </Link>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {!isAuthenticated ? (
+                <>
+                  <Link to="/login" onClick={() => setMobileOpen(false)} className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200">Log in</Link>
+                  <Link to="/signup" onClick={() => setMobileOpen(false)} className="px-3 py-1.5 rounded-full bg-sky-600 text-white hover:bg-sky-700 text-sm">Sign up</Link>
+                </>
+              ) : (
+                <>
+                  <span className="px-3 py-1.5 rounded-full text-xs ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300">
+                    {user?.name || user?.email || 'Account'} {role ? `· ${role}` : ''}
+                  </span>
+                  <button onClick={() => { setMobileOpen(false); logout(); }} className="px-3 py-1.5 rounded-full text-sm ring-1 ring-inset transition-colors bg-gray-100 text-gray-800 ring-gray-300 hover:bg-gray-200">Logout</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-white/60 to-transparent" />
     </header>
   );
